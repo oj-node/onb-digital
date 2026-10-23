@@ -19,8 +19,39 @@ module debounce_edge_detect #(
     // 4. Update sig_debounced with the stable input state.
     // 5. Generate 1-clock-cycle pulses for edge_rise and edge_fall.
 
-    assign sig_debounced = 1'b0;
-    assign edge_rise      = 1'b0;
-    assign edge_fall      = 1'b0;
+    localparam int unsigned CYCLES = (CLK_FREQ_HZ * STABLE_TIME_MS) / 1000;
+    localparam int unsigned CTR_W = $clog2(CYCLES); //19
+    
+    logic sig_sync_1, sig_sync_2;
+    logic [CTR_W-1:0] stable_ctr = 0;
+
+    always @(posedge clk or negedge rst_n) begin
+        if(!rst_n) begin
+            stable_ctr = '0;
+            sig_sync_1 = 1'b0;
+            sig_sync_2 = 1'b0;
+
+            sig_debounced = 1'b0;
+            edge_rise = 1'b0;
+            edge_fall = 1'b0;
+
+        end else begin
+            edge_rise = 1'b0;
+            edge_fall = 1'b0;
+
+            if(sig_sync_2 == sig_debounced) stable_ctr = '0; 
+            else if(stable_ctr ==  CTR_W'(CYCLES - 1)) begin
+                edge_rise = sig_sync_2;
+                edge_fall = ~sig_sync_2;
+                sig_debounced = sig_sync_2;
+                stable_ctr = '0;    
+            end else begin
+                stable_ctr++;
+            end
+
+            sig_sync_1 = sig_sync_2;
+            sig_sync_2 = sig_in;      
+        end 
+    end
 
 endmodule
