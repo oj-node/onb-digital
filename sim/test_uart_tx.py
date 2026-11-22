@@ -51,3 +51,11 @@ async def test_uart_tx_single_byte(dut):
     # Stop bit
     await Timer(baud_clks * 20, unit="ns")
     assert dut.txd.value == 1, "Stop bit must be 1"
+
+    # #check if back-to-back. second byte is sent after the first one
+    # dut.tx_data.value = 0x7A #byte(01111010)
+    # dut.tx_valid.value = 1
+    # await Timer(baud_clks * 10 + 1, unit="ns")
+    # assert dut.txd.value == 0, "Start bit should follow the stop bit immediately"
+    # dut.tx_valid.value = 0
+    # await Timer(baud_clks * 20 * 10, unit="ns")
