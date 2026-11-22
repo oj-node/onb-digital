@@ -29,7 +29,8 @@
 2. **FIFO:** Full/empty flag transitions and read/write ordering.
    <!-- [Paste image here] -->
 3. **UART TX:** Start bit, data serialization (LSB first), and Stop bit timing.
-   <!-- [Paste image here] -->
+   <!-- [Paste image here] --> ![data serialization](image.png)
+   ![Start bit](image-1.png),  ![Stop bit](image-2.png)
 
 ---
 
