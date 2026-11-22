@@ -54,4 +54,7 @@ module debounce_edge_detect #(
         end 
     end
 
+
+    // edge_fal <= ev ? (sig_debounced && !sig_sync_2) : 0;    
+
 endmodule
