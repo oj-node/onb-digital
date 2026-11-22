@@ -24,15 +24,17 @@ module uart_tx #(
     // 4. Manage the tx_ready flag to support back-to-back continuous transmission.
 
     localparam int unsigned CLKS_PER_BIT = (CLK_FREQ_HZ + BAUD_RATE/2) / BAUD_RATE;
-    enum logic [1:0]{
-        IDLE = 0, 
-        START = 1, 
-        DATA = 2, 
-        STOP =3} state = IDLE;
     
-    logic [2:0] bit_ctr = '0;
+    typedef enum logic [1:0] {IDLE, START, DATA, STOP} state_t;
+    state_t state;
+
+    logic [2:0] bit_ctr;
     logic [7:0] tx_data_reg;
-    logic [$clog2(CLKS_PER_BIT)-1:0] clk_ctr = '0;
+    logic [$clog2(CLKS_PER_BIT)-1:0] clk_ctr;
+
+    logic bit_tick, handshake;
+    assign bit_tick = (clk_ctr == CLKS_PER_BIT - 1);
+    assign handshake = tx_valid && tx_ready;
 
     always_ff @(posedge clk or negedge rst_n) begin
         if(!rst_n) begin
@@ -43,12 +45,12 @@ module uart_tx #(
             txd <= 1'b1;
 
         end else begin
-            if (clk_ctr == CLKS_PER_BIT - 1) clk_ctr <= '0;
+            if (bit_tick) clk_ctr <= '0;
             else clk_ctr <= clk_ctr + 1;
 
             case(state)
                 IDLE : begin
-                    if(tx_valid && tx_ready) begin
+                    if(handshake) begin
                         txd <= 0;
                         state <= START;
                         clk_ctr <= '0;
@@ -57,14 +59,14 @@ module uart_tx #(
                 end
 
                 START : begin
-                    if (clk_ctr == CLKS_PER_BIT - 1) begin
+                    if (bit_tick) begin
                         state <= DATA;
                         bit_ctr <= '0;
                         txd <= tx_data_reg[0];
                     end
                 end
                 DATA : begin
-                    if (clk_ctr == CLKS_PER_BIT - 1) begin
+                    if (bit_tick) begin
                         if (bit_ctr == 7) begin
                             state <= STOP;
                             txd <= 1'b1;
@@ -76,8 +78,8 @@ module uart_tx #(
                 end
 
                 STOP : begin
-                    if (clk_ctr == CLKS_PER_BIT - 1) begin
-                        if (tx_valid) begin
+                    if (bit_tick) begin
+                        if (handshake) begin
                             tx_data_reg <= tx_data;
                             txd <= 1'b0;
                             state <= START;
@@ -86,11 +88,15 @@ module uart_tx #(
                         end
                     end
                 end
+
+                default : begin
+                    state <= IDLE;
+                end
             endcase
         end
     end
 
-    assign tx_ready = (state == IDLE) || (state == STOP && clk_ctr == CLKS_PER_BIT - 1);
+    assign tx_ready = (state == IDLE) || (state == STOP && bit_tick);
 
 
 endmodule
