@@ -45,7 +45,7 @@ module sync_fifo #(
     assign do_write = wr_en && !full;
     assign do_read = rd_en && !empty;
 
-    always_ff @(posedge clk or negedge rst_n) begin
+    always_ff @(posedge clk) begin
         if(!rst_n) begin
             wr_ptr <= '0;
             rd_ptr <= '0;
