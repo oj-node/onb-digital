@@ -33,11 +33,37 @@ module sync_fifo #(
     // 5. Calculate flags: empty, full, almost_empty, almost_full.
     // 6. Handle simultaneous read and write.
 
-    assign full         = 1'b0;
-    assign almost_full  = 1'b0;
-    assign empty        = 1'b1;
-    assign almost_empty = 1'b1;
-    assign rd_data      = '0;
-    assign occupancy    = '0;
+    logic [DATA_WIDTH-1:0] mem [0:DEPTH-1]; // DEPTH cells x DATA_WIDTH
+    logic [$clog2(DEPTH)-1:0] wr_ptr, rd_ptr;
 
+    assign empty = (occupancy == 0);
+    assign full = (occupancy == DEPTH);
+    assign almost_empty = (occupancy <= ALMOST_EMPTY_THRESH);
+    assign almost_full = (occupancy >= ALMOST_FULL_THRESH);
+
+    logic do_write, do_read;
+    assign do_write = wr_en && !full;
+    assign do_read = rd_en && !empty;
+
+    always_ff @(posedge clk or negedge rst_n) begin
+        if(!rst_n) begin
+            wr_ptr <= '0;
+            rd_ptr <= '0;
+            occupancy <= '0;
+            rd_data <= '0;
+
+        end else begin
+            if(do_write) begin
+                mem[wr_ptr] <= wr_data;
+                wr_ptr <= (wr_ptr == DEPTH-1) ? '0 : wr_ptr + 1;
+            end
+
+            if(do_read) begin
+                rd_data <= mem[rd_ptr];
+                rd_ptr <= (rd_ptr == DEPTH-1) ? '0 : rd_ptr + 1;
+            end 
+
+            occupancy <= occupancy + do_write - do_read;
+        end
+    end
 endmodule
